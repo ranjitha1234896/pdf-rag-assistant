@@ -1,4 +1,5 @@
 import pdfplumber
+from sentence_transformers import SentenceTransformer
 
 def chunk_text(text, chunk_size=500, overlap=50):
     words = text.split()
@@ -18,9 +19,12 @@ with pdfplumber.open("Sample_Resume_Aarav_Sharma.pdf") as pdf:
 
 chunks = chunk_text(full_text)
 print("Number of chunks:", len(chunks))
-for i, chunk in enumerate(chunks):
-    print(f"\n--- Chunk {i+1} ---")
-    print(chunk)
+
+model = SentenceTransformer("all-MiniLM-L6-v2")
+embeddings = model.encode(chunks)
+
+print("Shape of embeddings:", embeddings.shape)
+print("First embedding (first 10 numbers):", embeddings[0][:10])
 
 
 
