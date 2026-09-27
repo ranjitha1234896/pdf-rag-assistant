@@ -10,21 +10,24 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 
 client = chromadb.PersistentClient(path="chroma_db")
 collection = client.get_or_create_collection(name="pdf_chunks")
-gemini_model = genai.GenerativeModel("gemini-3.5-flash")
+gemini_model = genai.GenerativeModel("gemini-3.8-flash")
 
-question = "What is this document about?"
+question = input("Ask a question about your PDF: ")
 question_embedding = model.encode([question])
 
 results = collection.query(
     query_embeddings=question_embedding.tolist(),
-    n_results=2
+    n_results=3
 )
 
 print("Question:", question)
-print("\nMost relevant chunk:\n")
-print(results['documents'][0][0])
+print("\nRetrieved chunks:\n")
+for i, doc in enumerate(results['documents'][0]):
+    print(f"--- Chunk {i+1} ---")
+    print(doc)
+    print()
 
-context = results['documents'][0][0]
+context = "\n\n".join(results['documents'][0])
 
 prompt = f"""Answer the question based only on the context below.
 If the answer isn't in the context, say "I don't know."

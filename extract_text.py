@@ -14,7 +14,7 @@ def chunk_text(text, chunk_size=500, overlap=50):
     return chunks
 
 # Step 1: Extract text from PDF
-with pdfplumber.open("Sample_Resume_Aarav_Sharma.pdf") as pdf:
+with pdfplumber.open("Module-1 Part 1.pdf") as pdf:
     full_text = ""
     for page in pdf.pages:
         full_text += page.extract_text() + "\n"
