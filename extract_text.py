@@ -12,6 +12,7 @@ def chunk_text(text, chunk_size=500, overlap=50):
         chunks.append(chunk)
         start += chunk_size - overlap
     return chunks
+    
 
 # Step 1: Extract text from PDF
 with pdfplumber.open("Module-1 Part 1.pdf") as pdf:

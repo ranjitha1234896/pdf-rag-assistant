@@ -38,8 +38,18 @@ def chunk_text(text, chunk_size=500, overlap=50):
         start += chunk_size - overlap
     return chunks
 
+def chunk_pages(pdf):
+    chunks = []
+    pages = []
+    for page_number, page in enumerate(pdf.pages, start=1):
+        text = page.extract_text() or ""
+        for chunk in chunk_text(text):
+            chunks.append(chunk)
+            pages.append(page_number)
+    return chunks, pages
 
-def build_collection(chunks):
+
+def build_collection(chunks, pages):
     # Delete the old collection so the previous PDF's chunks are gone
     try:
         client.delete_collection(name="pdf_chunks")
@@ -51,7 +61,8 @@ def build_collection(chunks):
     collection.add(
         documents=chunks,
         embeddings=embeddings.tolist(),
-        ids=[f"chunk_{i}" for i in range(len(chunks))]
+        ids=[f"chunk_{i}" for i in range(len(chunks))],
+        metadatas=[{"page": p} for p in pages]
     )
     return collection
 
@@ -62,18 +73,14 @@ if uploaded_file is not None:
     # Only process the PDF again when a NEW file is uploaded
     if st.session_state.get("current_file") != uploaded_file.file_id:
         with pdfplumber.open(uploaded_file) as pdf:
-            full_text = ""
-            for page in pdf.pages:
-                full_text += (page.extract_text() or "") + "\n"
-
-        chunks = chunk_text(full_text)
+            chunks, pages = chunk_pages(pdf)
 
         if len(chunks) == 0:
             st.session_state["current_file"] = None
             st.session_state["num_chunks"] = 0
             st.error("No text found in this PDF. It may be image-based (scanned).")
         else:
-            build_collection(chunks)
+            build_collection(chunks, pages)
             st.session_state["current_file"] = uploaded_file.file_id
             st.session_state["num_chunks"] = len(chunks)
 
@@ -90,10 +97,9 @@ if uploaded_file is not None:
                 n_results=min(11, collection.count())
             )
             context = "\n\n".join(results['documents'][0])
-
             with st.expander("🔍 Retrieved chunks (debug)"):
-                for i, doc in enumerate(results['documents'][0]):
-                    st.write(f"**Chunk {i+1}:** {doc}...")
+                for i, (doc, meta) in enumerate(zip(results['documents'][0], results['metadatas'][0])):
+                    st.write(f"**Chunk {i+1} (Page {meta['page']}):** {doc}...")
 
             prompt = f"""Answer the question based only on the context below.
 If the answer isn't in the context, say "I don't know."
@@ -108,3 +114,14 @@ Answer:"""
             response = gemini_model.generate_content(prompt)
             st.subheader("Answer:")
             st.write(response.text)
+            top_docs = results['documents'][0][:3]
+            top_metas = results['metadatas'][0][:3]
+
+            pages_used = sorted(set(m['page'] for m in top_metas))
+            st.caption("📄 Sources: Page " + ", ".join(str(p) for p in pages_used))
+
+            with st.expander("📄 Sources used (top 3 matches)"):
+                for doc, meta in zip(top_docs, top_metas):
+                    st.markdown(f"**Page {meta['page']}**")
+                    st.write(doc)
+                    st.divider()

@@ -10,7 +10,7 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 
 client = chromadb.PersistentClient(path="chroma_db")
 collection = client.get_or_create_collection(name="pdf_chunks")
-gemini_model = genai.GenerativeModel("gemini-3.8-flash")
+gemini_model = genai.GenerativeModel("gemini-3.1-flash-lite")
 
 question = input("Ask a question about your PDF: ")
 question_embedding = model.encode([question])
